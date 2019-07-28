@@ -113,29 +113,33 @@ if __name__ == "__main__":
                         if start_is_valid and end_is_valid:
                             if cache_dictionary[ip][cpu]:
                                 if cache_dictionary[ip][cpu][0]:
-                                    delta = end_dt - start_dt
-                                    first_element = cache_dictionary[ip][cpu][0][0]
+                                    if start_dt < end_dt:
 
-                                    first_element_timestap = datetime.utcfromtimestamp(int(first_element)).strftime(date_format)
+                                        delta = end_dt - start_dt
+                                        first_element = cache_dictionary[ip][cpu][0][0]
 
-                                    begin_delta = start_dt - datetime.strptime(first_element_timestap, date_format)
+                                        first_element_timestap = datetime.utcfromtimestamp(int(first_element)).strftime(date_format)
 
-                                    start_position = int(begin_delta.total_seconds() / 60)
-                                    end_position = int(delta.total_seconds() / 60) + start_position
+                                        begin_delta = start_dt - datetime.strptime(first_element_timestap, date_format)
 
-                                    tmp_list = cache_dictionary[ip][cpu][start_position:end_position]
+                                        start_position = int(begin_delta.total_seconds() / 60)
+                                        end_position = int(delta.total_seconds() / 60) + start_position
 
-                                    printable = []
+                                        tmp_list = cache_dictionary[ip][cpu][start_position:end_position]
 
-                                    is_slice_issue = False
-                                    for i in tmp_list:
-                                        if not is_slice_issue and begin_delta.seconds == 0:
-                                            printable.append([datetime.utcfromtimestamp(int(i[0])).strftime(date_format), i[1]])
-                                            is_slice_issue = True
-                                            continue
-                                        printable.append([datetime.utcfromtimestamp(int(i[0][0])).strftime(date_format), i[0][1]])
+                                        printable = []
 
-                                    print('CPU{} usage on {}:'.format(cpu, ip) + ', '.join('({}, {}%)'.format(*k) for k in printable))
+                                        is_slice_issue = False
+                                        for i in tmp_list:
+                                            if not is_slice_issue and begin_delta.seconds == 0:
+                                                printable.append([datetime.utcfromtimestamp(int(i[0])).strftime(date_format), i[1]])
+                                                is_slice_issue = True
+                                                continue
+                                            printable.append([datetime.utcfromtimestamp(int(i[0][0])).strftime(date_format), i[0][1]])
+
+                                        print('CPU{} usage on {}:'.format(cpu, ip) + ', '.join('({}, {}%)'.format(*k) for k in printable))
+                                    else:
+                                        print('Invalid date: time_start is greater than time_end')
                     else:
                         print('CPU out of range:', cpu)
                 else:
