@@ -41,30 +41,6 @@ def fill_dictionary(file_records):
     return cache_collection
 
 
-def parse_query(query, query_token='QUERY', date_format='%Y-%m-%d %H:%M'):
-    if query.startswith(query_token):
-        raw_query = query.replace(query_token, '').split(' ')
-        if len(raw_query) == 6:
-            ip, cpu, start, end = \
-                raw_query[0], raw_query[1], raw_query[2] + ' ' + raw_query[3], raw_query[4] + ' ' + raw_query[5]
-
-            try:
-                start_dt = datetime.strptime(start, date_format)
-            except ValueError:
-                print('Start date is invalid. Valid format:{}'.format(date_format))
-                return
-            try:
-                end_dt = datetime.strptime(end, date_format)
-            except ValueError:
-                print('End date is invalid. Valid format:{}'.format(date_format))
-                return
-
-            return ip, cpu, start_dt, end_dt
-
-    print('Invalid query format. Valid is "%s IP cpu_id time_start time_end"' % query_token)
-    return
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('data_path', default='./tmp/', type=str, help='Generated logs output path')
