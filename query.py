@@ -1,6 +1,5 @@
 import argparse
 import os
-import time
 from datetime import datetime
 from os import path, listdir
 
@@ -81,8 +80,6 @@ if __name__ == "__main__":
 
     exit_term = 'EXIT'
 
-    import time
-
     while True:
         query = input('>')
         if query == exit_term:
@@ -94,68 +91,56 @@ if __name__ == "__main__":
                 ip, cpu, start, end = \
                     raw_query[0], raw_query[1], raw_query[2] + ' ' + raw_query[3], raw_query[4] + ' ' + raw_query[5]
 
-                start_time = time.time()
-
                 if ip in cache_dictionary:
                     if cpu in cache_dictionary[ip]:
 
-                        print(ip, cpu, start, end)
-
                         date_format = '%Y-%m-%d %H:%M'
 
-                        # try:
-                        start_dt = datetime.strptime(start, date_format)
-                        # except ValueError:
-                        #     print('Start date is invalid. Valid format:{}'.format(date_format))
+                        start_is_valid = True
+                        try:
+                            start_dt = datetime.strptime(start, date_format)
+                        except ValueError:
+                            start_is_valid = False
+                            print('Start date is invalid. Valid format:{}'.format(date_format))
 
-                        # try:
-                        end_dt = datetime.strptime(end, date_format)
-                        # except ValueError:
-                        #     print('End date is invalid. Valid format:{}'.format(date_format))
+                        end_is_valid = True
+                        try:
+                            end_dt = datetime.strptime(end, date_format)
+                        except ValueError:
+                            end_is_valid = False
+                            print('End date is invalid. Valid format:{}'.format(date_format))
 
-                        # if start_dt > end_dt:
-                        #     print('Start date is greater than end date')
-                        #     continue
+                        if start_is_valid and end_is_valid:
+                            if cache_dictionary[ip][cpu]:
+                                if cache_dictionary[ip][cpu][0]:
+                                    delta = end_dt - start_dt
+                                    first_element = cache_dictionary[ip][cpu][0][0]
 
-                        delta = end_dt - start_dt
+                                    first_element_timestap = datetime.utcfromtimestamp(int(first_element)).strftime(date_format)
 
-                        first_element = cache_dictionary[ip][cpu][0][0]
+                                    begin_delta = start_dt - datetime.strptime(first_element_timestap, date_format)
 
-                        first_element_timestap = datetime.utcfromtimestamp(int(first_element)).strftime(date_format)
+                                    start_position = int(begin_delta.total_seconds() / 60)
+                                    end_position = int(delta.total_seconds() / 60) + start_position
 
-                        begin_delta = start_dt - datetime.strptime(first_element_timestap, date_format)
-                        # QUERY 192.168.0.0 1 2014-10-31 00:01 2014-10-31 00:06
-                        # QUERY 192.168.0.0 1 2014-10-31 00:00 2014-10-31 00:04
-                        # QUERY 192.168.0.0 1 2014-10-31 00:00 2014-10-31 00:04
+                                    tmp_list = cache_dictionary[ip][cpu][start_position:end_position]
 
-                        start_position = int(begin_delta.total_seconds() / 60)
-                        end_position = int(delta.total_seconds() / 60) + start_position
+                                    printable = []
 
-                        tmp_list = cache_dictionary[ip][cpu][start_position:end_position]
+                                    is_slice_issue = False
+                                    for i in tmp_list:
+                                        if not is_slice_issue and begin_delta.seconds == 0:
+                                            printable.append([datetime.utcfromtimestamp(int(i[0])).strftime(date_format), i[1]])
+                                            is_slice_issue = True
+                                            continue
+                                        printable.append([datetime.utcfromtimestamp(int(i[0][0])).strftime(date_format), i[0][1]])
 
-                        printable = []
-
-                        is_slice_issue = False
-                        for i in tmp_list:
-                            if not is_slice_issue and begin_delta.seconds == 0:
-                                printable.append([datetime.utcfromtimestamp(int(i[0])).strftime(date_format), i[1]])
-                                is_slice_issue = True
-                                continue
-                            printable.append([datetime.utcfromtimestamp(int(i[0][0])).strftime(date_format), i[0][1]])
-
-                        print(
-                            'CPU{} usage on {}:'.format(cpu, ip) + ', '.join('({}, {}%)'.format(*k) for k in printable))
-
-                        # CPU1 usage on 192.168.1.10: (2014-10-31 00:00, 90%), (2014-10-31 00:01, 89%), (2014-10-31 00:02, 87%), (2014-10-31 00:03, 94%) (2014-10-31 00:04, 88%)
-
+                                    print('CPU{} usage on {}:'.format(cpu, ip) + ', '.join('({}, {}%)'.format(*k) for k in printable))
+                    else:
+                        print('CPU out of range:', cpu)
                 else:
-                    print('CPU out of range:', cpu)
-
-                print("--- %s seconds ---" % (time.time() - start_time))
-
+                    print('IP out of range:', ip)
             else:
-                print('IP out of range:', ip)
-
+                print('Invalid query format. Valid is "QUERY IP cpu_id time_start time_end"')
         else:
             print('Invalid query format. Valid is "QUERY IP cpu_id time_start time_end"')
-
