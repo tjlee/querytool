@@ -41,10 +41,6 @@ def fill_dictionary(file_records):
     return cache_collection
 
 
-def process_query(query):
-    pass
-
-
 def parse_query(query, query_token='QUERY', date_format='%Y-%m-%d %H:%M'):
     if query.startswith(query_token):
         raw_query = query.replace(query_token, '').split(' ')
