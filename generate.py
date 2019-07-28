@@ -19,7 +19,6 @@ def get_random_cpu_usage():
 
 
 def write_to_named_file(data_dir, file_name, lines):
-    assert os.path.exists(data_dir), 'Nonexistent directory'
     tmp_file = os.path.join(data_dir, file_name)
     with open(tmp_file, 'w+') as f:
         f.write('\n'.join(str(tick_line) for tick_line in lines))
@@ -27,6 +26,10 @@ def write_to_named_file(data_dir, file_name, lines):
 
 def get_seconds_in_range(start_time=datetime.utcnow(), delta=timedelta(days=1)):
     return [str(i) for i in range(utc_to_timestamp(start_time), utc_to_timestamp(start_time + delta))]
+
+
+def get_minutes_in_range(start_time=datetime.utcnow(), delta=timedelta(days=1)):
+    return [str(i) for i in range(utc_to_timestamp(start_time), utc_to_timestamp(start_time + delta), 60)]
 
 
 def generate_sample_data(timestamp_ticks, servers_count=1000, cpu_per_server=2):
@@ -52,27 +55,22 @@ def print_progress_bar(iteration, total, decimals=1, length=100, fill='█'):
         print()
 
 
-# to do ==> polish and add more args
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generates sample logs for one day (default 2014-10-31)')
     parser.add_argument('data_path', type=str, help='Generated logs output path')
     args = parser.parse_args()
 
-    all_seconds_in_day = get_seconds_in_range(start_time=datetime(year=2014, month=10, day=31), delta=timedelta(days=1))
+    assert os.path.exists(args.data_path), 'Nonexistent directory'
 
-    minute_tick = 60
+    all_minutes_in_day = get_minutes_in_range(start_time=datetime(year=2014, month=10, day=31), delta=timedelta(days=1))
+
     minutes_in_day = 1440
 
-    # todo: move to def
     for per_minute_in_day in range(0, minutes_in_day):
         print_progress_bar(per_minute_in_day, minutes_in_day - 1)
 
-        minute_ahead = per_minute_in_day + 1
+        current_minute = all_minutes_in_day[per_minute_in_day]
+        data = generate_sample_data([current_minute], servers_count=1000)
 
-        minute_slice = all_seconds_in_day[per_minute_in_day * minute_tick:minute_ahead * minute_tick]
-
-        data = generate_sample_data(minute_slice, servers_count=2)
-
-        filename = minute_slice[0] + '.log'
+        filename = str(current_minute) + '.log'
         write_to_named_file(args.data_path, filename, data)

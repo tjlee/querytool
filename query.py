@@ -1,9 +1,8 @@
 import argparse
-from os import path, listdir
 import os
-import psutil
-import sys
+import time
 from datetime import datetime
+from os import path, listdir
 
 
 def get_file_contents(file_name):
@@ -30,7 +29,9 @@ def fill_dictionary(file_records):
             timestamp, ip, cpu, usage = record.split(' ')
 
             if ip not in cache_collection:
-                cache_collection[ip] = {cpu: [[timestamp, usage]]}
+                cache_collection[ip] = {}
+                cache_collection[ip][cpu] = []
+                cache_collection[ip][cpu].append([[timestamp, usage]])
             else:
                 if cpu not in cache_collection[ip]:
                     cache_collection[ip][cpu] = [[timestamp, usage]]
@@ -41,11 +42,40 @@ def fill_dictionary(file_records):
     return cache_collection
 
 
+def process_query(query):
+    pass
+
+
+def parse_query(query, query_token='QUERY', date_format='%Y-%m-%d %H:%M'):
+    if query.startswith(query_token):
+        raw_query = query.replace(query_token, '').split(' ')
+        if len(raw_query) == 6:
+            ip, cpu, start, end = \
+                raw_query[0], raw_query[1], raw_query[2] + ' ' + raw_query[3], raw_query[4] + ' ' + raw_query[5]
+
+            try:
+                start_dt = datetime.strptime(start, date_format)
+            except ValueError:
+                print('Start date is invalid. Valid format:{}'.format(date_format))
+                return
+            try:
+                end_dt = datetime.strptime(end, date_format)
+            except ValueError:
+                print('End date is invalid. Valid format:{}'.format(date_format))
+                return
+
+            return ip, cpu, start_dt, end_dt
+
+    print('Invalid query format. Valid is "%s IP cpu_id time_start time_end"' % query_token)
+    return
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('data_path', default='./tmp/', type=str, help='Generated logs output path')
     args = parser.parse_args()
 
+    assert os.path.exists(args.data_path), 'Nonexistent directory'
     raw_data = read_files_contents_to_list(args.data_path)
     cache_dictionary = fill_dictionary(raw_data)
 
@@ -73,39 +103,52 @@ if __name__ == "__main__":
 
                         date_format = '%Y-%m-%d %H:%M'
 
-                        try:
-                            start_dt = datetime.strptime(start, date_format)
-                        except ValueError:
-                            print('Start date is invalid. Valid format:{}'.format(date_format))
+                        # try:
+                        start_dt = datetime.strptime(start, date_format)
+                        # except ValueError:
+                        #     print('Start date is invalid. Valid format:{}'.format(date_format))
 
-                        try:
-                            end_dt = datetime.strptime(end, date_format)
-                        except ValueError:
-                            print('End date is invalid. Valid format:{}'.format(date_format))
+                        # try:
+                        end_dt = datetime.strptime(end, date_format)
+                        # except ValueError:
+                        #     print('End date is invalid. Valid format:{}'.format(date_format))
 
-                        if start_dt > end_dt:
-                            print('Start date is greater than end date')
+                        # if start_dt > end_dt:
+                        #     print('Start date is greater than end date')
+                        #     continue
 
                         delta = end_dt - start_dt
 
                         first_element = cache_dictionary[ip][cpu][0][0]
 
-                        another_date_format = '%Y-%m-%d %H:%M:%S'
-                        first_element_timestap = datetime.utcfromtimestamp(int(first_element)).strftime(
-                            another_date_format)
+                        first_element_timestap = datetime.utcfromtimestamp(int(first_element)).strftime(date_format)
 
-                        begin_delta = start_dt - datetime.strptime(first_element_timestap, another_date_format)
+                        begin_delta = start_dt - datetime.strptime(first_element_timestap, date_format)
+                        # QUERY 192.168.0.0 1 2014-10-31 00:01 2014-10-31 00:06
+                        # QUERY 192.168.0.0 1 2014-10-31 00:00 2014-10-31 00:04
+                        # QUERY 192.168.0.0 1 2014-10-31 00:00 2014-10-31 00:04
 
-                        # 2014-10-31 00:00
-                        # 2014-10-31 00:05
+                        start_position = int(begin_delta.total_seconds() / 60)
+                        end_position = int(delta.total_seconds() / 60) + start_position
 
-                        print(cache_dictionary[ip][cpu][begin_delta.seconds:delta.seconds])
-                        print(ip, cpu, start, end)
+                        tmp_list = cache_dictionary[ip][cpu][start_position:end_position]
+
+                        printable = []
+
+                        is_slice_issue = False
+                        for i in tmp_list:
+                            if not is_slice_issue and begin_delta.seconds == 0:
+                                printable.append([datetime.utcfromtimestamp(int(i[0])).strftime(date_format), i[1]])
+                                is_slice_issue = True
+                                continue
+                            printable.append([datetime.utcfromtimestamp(int(i[0][0])).strftime(date_format), i[0][1]])
+
+                        print(
+                            'CPU{} usage on {}:'.format(cpu, ip) + ', '.join('({}, {}%)'.format(*k) for k in printable))
 
                         # CPU1 usage on 192.168.1.10: (2014-10-31 00:00, 90%), (2014-10-31 00:01, 89%), (2014-10-31 00:02, 87%), (2014-10-31 00:03, 94%) (2014-10-31 00:04, 88%)
 
                 else:
-                    print(cpu)
                     print('CPU out of range:', cpu)
 
                 print("--- %s seconds ---" % (time.time() - start_time))
@@ -115,3 +158,4 @@ if __name__ == "__main__":
 
         else:
             print('Invalid query format. Valid is "QUERY IP cpu_id time_start time_end"')
+
