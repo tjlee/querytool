@@ -41,6 +41,14 @@ def fill_dictionary(file_records):
     return cache_collection
 
 
+def seconds_to_minutes(t):
+    return int(t.total_seconds() / 60)
+
+
+def timestamp_to_dt_string(timestamp, date_format):
+    return datetime.utcfromtimestamp(int(timestamp)).strftime(date_format)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('data_path', default='./tmp/', type=str, help='Generated logs output path')
@@ -50,15 +58,16 @@ if __name__ == "__main__":
     raw_data = read_files_contents_to_list(args.data_path)
     cache_dictionary = fill_dictionary(raw_data)
 
-    exit_term = 'EXIT'
+    exit_token = 'EXIT'
+    query_token = 'QUERY'
 
     while True:
         query = input('>')
-        if query == exit_term:
+        if query == exit_token:
             break
 
-        if query.startswith('QUERY'):
-            raw_query = query.replace('QUERY ', '').split(' ')
+        if query.startswith(query_token):
+            raw_query = query.replace('%s ' % query_token, '').split(' ')
             if len(raw_query) == 6:
                 ip, cpu, start, end = \
                     raw_query[0], raw_query[1], raw_query[2] + ' ' + raw_query[3], raw_query[4] + ' ' + raw_query[5]
@@ -88,26 +97,29 @@ if __name__ == "__main__":
                                     if start_dt < end_dt:
 
                                         delta = end_dt - start_dt
+
                                         first_element = cache_dictionary[ip][cpu][0][0]
+                                        first_element_dt = datetime.utcfromtimestamp(int(first_element))
 
-                                        first_element_timestap = datetime.utcfromtimestamp(int(first_element)).strftime(date_format)
+                                        begin_delta = start_dt - first_element_dt
 
-                                        begin_delta = start_dt - datetime.strptime(first_element_timestap, date_format)
+                                        start_position = seconds_to_minutes(begin_delta)
+                                        end_position = seconds_to_minutes(delta) + start_position
 
-                                        start_position = int(begin_delta.total_seconds() / 60)
-                                        end_position = int(delta.total_seconds() / 60) + start_position
-
-                                        tmp_list = cache_dictionary[ip][cpu][start_position:end_position]
+                                        # slice to get result
+                                        raw_result_list = cache_dictionary[ip][cpu][start_position:end_position]
 
                                         printable = []
 
+                                        # if to slice list of lists [[],[]] the first element is not list of list but list
                                         is_slice_issue = False
-                                        for i in tmp_list:
+                                        for raw_result in raw_result_list:
+                                            # raw_result[[timestamp, usage],...]
                                             if not is_slice_issue and begin_delta.seconds == 0:
-                                                printable.append([datetime.utcfromtimestamp(int(i[0])).strftime(date_format), i[1]])
+                                                printable.append([timestamp_to_dt_string(raw_result[0], date_format), raw_result[1]])
                                                 is_slice_issue = True
                                                 continue
-                                            printable.append([datetime.utcfromtimestamp(int(i[0][0])).strftime(date_format), i[0][1]])
+                                            printable.append([timestamp_to_dt_string(raw_result[0][0], date_format), raw_result[0][1]])
 
                                         print('CPU{} usage on {}:'.format(cpu, ip) + ', '.join('({}, {}%)'.format(*k) for k in printable))
                                     else:
