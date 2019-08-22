@@ -30,13 +30,15 @@ def fill_dictionary(file_records):
             if ip not in cache_collection:
                 cache_collection[ip] = {}
                 cache_collection[ip][cpu] = []
-                cache_collection[ip][cpu].append([[timestamp, usage]])
+                # cache_collection[ip][cpu].append([[timestamp, usage]])
+                cache_collection[ip][cpu].append((timestamp,usage))
             else:
                 if cpu not in cache_collection[ip]:
-                    cache_collection[ip][cpu] = [[timestamp, usage]]
+                    cache_collection[ip][cpu] = []
+                    cache_collection[ip][cpu].append((timestamp,usage))
                 else:
                     # ip & cpu in collection => append timestamp, usage
-                    cache_collection[ip][cpu].append([[timestamp, usage]])
+                    cache_collection[ip][cpu].append((timestamp, usage))
 
     return cache_collection
 
@@ -110,16 +112,8 @@ if __name__ == "__main__":
                                         raw_result_list = cache_dictionary[ip][cpu][start_position:end_position]
 
                                         printable = []
-
-                                        # if to slice list of lists [[],[]] the first element is not list of list but list
-                                        is_slice_issue = False
                                         for raw_result in raw_result_list:
-                                            # raw_result[[timestamp, usage],...]
-                                            if not is_slice_issue and begin_delta.seconds == 0:
-                                                printable.append([timestamp_to_dt_string(raw_result[0], date_format), raw_result[1]])
-                                                is_slice_issue = True
-                                                continue
-                                            printable.append([timestamp_to_dt_string(raw_result[0][0], date_format), raw_result[0][1]])
+                                            printable.append([timestamp_to_dt_string(raw_result[0], date_format), raw_result[1]])
 
                                         print('CPU{} usage on {}:'.format(cpu, ip) + ', '.join('({}, {}%)'.format(*k) for k in printable))
                                     else:
